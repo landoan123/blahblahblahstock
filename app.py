@@ -557,6 +557,41 @@ if run:
     if df.empty:
         st.error("Không tải được dữ liệu. Kiểm tra ticker hoặc thử đổi khoảng ngày.")
         st.stop()
+        # ============ PHÂN TÍCH TỔNG QUAN ============
+    st.markdown("##Trang chủ")
+    st.markdown("###Phân tích tổng quan")
+
+    # Thông số đầu vào
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("Mã chứng khoán", ticker)
+    with c2:
+        st.metric("Ngày bắt đầu", start_str)
+    with c3:
+        st.metric("Ngày kết thúc", end_str)
+    with c4:
+        st.metric("Tần suất", freq_label)
+
+    st.caption(f"Analyzing {ticker} from {start_str} to {end_str}")
+
+    # Dữ liệu nguồn (raw từ Yahoo)
+    st.markdown("### 🧾 Dữ liệu nguồn")
+    st.dataframe(df.head(20), use_container_width=True)
+
+    with st.expander("🔍 Mở rộng dữ liệu nguồn"):
+        st.dataframe(df, use_container_width=True)
+
+    # Thống kê mô tả
+    st.markdown("### 📈 Phân tích các tham số thống kê")
+    num_cols = [
+        c for c in df.columns
+        if c != "Date" and np.issubdtype(df[c].dtype, np.number)
+    ]
+    if num_cols:
+        stats = df[num_cols].describe().T  # mỗi cột 1 dòng: count, mean, std, min, max,...
+        st.dataframe(stats, use_container_width=True)
+    else:
+        st.info("Không có cột số để thống kê.")
 
     # resolve cột giá (ưu tiên user chọn, fallback Close)
     try:
@@ -637,6 +672,7 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
 
 
