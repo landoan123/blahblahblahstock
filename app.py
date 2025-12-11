@@ -633,6 +633,45 @@ if run:
 
         with st.expander("🔍 Xem toàn bộ dữ liệu nguồn"):
             st.dataframe(df, use_container_width=True)
+        st.markdown("#### 📉 Biểu đồ giá lịch sử (không dự báo)")
+        # Dùng series đã chuẩn hoá tần suất ts["y"]
+        hist = ts["y"].dropna()
+        if not hist.empty:
+        fig_hist = go.Figure()
+
+        # Giá thực tế
+        fig_hist.add_trace(
+            go.Scatter(
+                x=hist.index,
+                y=hist.values,
+                mode="lines",
+                name=price_choice,   # Adj Close / Close
+                line=dict(width=1.8),
+            )
+        )
+
+        # (tuỳ chọn) vẽ thêm MA nếu người dùng đang chọn MA20/50/200 ở sidebar
+        if ma_window is not None and ma_window > 0 and len(hist) >= 2:
+            ma_hist = hist.rolling(window=int(ma_window), min_periods=1).mean()
+            fig_hist.add_trace(
+                go.Scatter(
+                    x=ma_hist.index,
+                    y=ma_hist.values,
+                    mode="lines",
+                    name=f"MA{int(ma_window)}",
+                    line=dict(dash="dot"),  # nét chấm cho khác chart dự báo
+                )
+            )
+
+        fig_hist.update_layout(
+            height=400,
+            margin=dict(l=20, r=20, t=10, b=20),
+            xaxis_title="Ngày",
+            yaxis_title=price_choice,
+        )
+
+        st.plotly_chart(fig_hist, use_container_width=True)
+
 
         # Thống kê mô tả
         st.markdown("📈 Phân tích các tham số thống kê")
@@ -692,6 +731,7 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
 
 
