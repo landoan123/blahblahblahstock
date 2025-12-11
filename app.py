@@ -637,11 +637,11 @@ if run:
         # Dùng series đã chuẩn hoá tần suất ts["y"]
         hist = ts["y"].dropna()
         if not hist.empty:
-        fig_hist = go.Figure()
+           fig_hist = go.Figure()
 
         # Giá thực tế
-        fig_hist.add_trace(
-            go.Scatter(
+           fig_hist.add_trace(
+              go.Scatter(
                 x=hist.index,
                 y=hist.values,
                 mode="lines",
@@ -731,6 +731,7 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
 
 
