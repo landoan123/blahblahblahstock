@@ -322,6 +322,79 @@ def plot_actual_forecast(
     )
     st.plotly_chart(fig, use_container_width=True)
     return fc
+def compute_error_metrics(y_true, y_pred):
+    """Tính MAE, RMSE, MAPE (theo %) giữa y_true và y_pred."""
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
+    if len(y_true) == 0:
+        return None
+
+    err = y_true - y_pred
+    mae = float(np.mean(np.abs(err)))
+    rmse = float(np.sqrt(np.mean(err ** 2)))
+
+    # tránh chia cho 0 khi tính MAPE
+    mask = y_true != 0
+    if np.any(mask):
+        mape = float(np.mean(np.abs(err[mask] / y_true[mask])) * 100.0)
+    else:
+        mape = float("nan")
+
+    return {"MAE": mae, "RMSE": rmse, "MAPE": mape}
+
+
+def backtest_error_for_model(
+    ts: pd.DataFrame,
+    method: str,
+    horizon: int,
+    freq: str,
+    alpha_mode: str,
+    alpha_fixed: float,
+    trend_type: str,
+    seasonal_type: str,
+):
+    """
+    Backtest 1 lần dùng đoạn cuối của chuỗi để tính chỉ số lỗi.
+
+    - Dùng toàn bộ ts['y'] làm series.
+    - Giữ lại 'horizon' điểm cuối làm tập test.
+    - Fit mô hình trên phần còn lại, forecast horizon bước.
+    - So sánh forecast với test để ra MAE, RMSE, MAPE.
+    """
+    y = ts["y"].dropna().astype(float)
+
+    # Cần đủ dữ liệu để tách train / test và thoả điều kiện len(y_train) >= 10 trong forecast_series
+    if len(y) <= horizon + 10:
+        return None
+
+    y_train = y.iloc[:-horizon]
+    y_test = y.iloc[-horizon:]
+
+    try:
+        fc_test = forecast_series(
+            y=y_train,
+            method=method,
+            horizon=horizon,
+            freq=freq,
+            alpha_mode=alpha_mode,
+            alpha_fixed=alpha_fixed,
+            trend_type=trend_type,
+            seasonal_type=seasonal_type,
+        )
+    except Exception:
+        # mô hình không chạy được với cấu hình hiện tại → bỏ qua phần lỗi
+        return None
+
+    y_pred = np.asarray(fc_test.values, dtype=float)
+    y_true = y_test.values.astype(float)
+
+    # Nếu vì lý do nào đó độ dài lệch nhau thì lấy phần chung
+    m = min(len(y_true), len(y_pred))
+    if m == 0:
+        return None
+
+    return compute_error_metrics(y_true[:m], y_pred[:m])
+
 
 # -----------------------------
 # UI
@@ -528,6 +601,25 @@ if run:
     except Exception as e:
         st.error(f"Lỗi khi dự báo: {e}")
         st.stop()
+        # Tính chỉ số lỗi trên dữ liệu lịch sử (backtest)
+    metrics = backtest_error_for_model(
+        ts=ts,
+        method=method,
+        horizon=horizon,
+        freq=freq,
+        alpha_mode=alpha_mode,
+        alpha_fixed=alpha_fixed,
+        trend_type=trend_type,
+        seasonal_type=seasonal_type,
+    )
+
+    if metrics is not None:
+        st.subheader(f"Chỉ số lỗi ({method})")
+        st.markdown(
+            f"- MAE: {metrics['MAE']:.2f}\n"
+            f"- RMSE: {metrics['RMSE']:.2f}\n"
+            f"- MAPE: {metrics['MAPE']:.2f}%"
+        )
 
     st.subheader("Biểu đồ dự báo")
     fc_indexed = plot_actual_forecast(
@@ -545,6 +637,8 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
+
 
 
 
