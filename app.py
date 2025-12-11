@@ -629,7 +629,7 @@ if run:
         st.caption(f"Analyzing {ticker} từ {start_str} đến {end_str}")
 
         # Dữ liệu nguồn (raw từ Yahoo)
-        st.markdown(🧾 Dữ liệu nguồn")
+        st.markdown("🧾 Dữ liệu nguồn")
         st.dataframe(df.head(20), use_container_width=True)
 
         with st.expander("🔍 Xem toàn bộ dữ liệu nguồn"):
@@ -693,6 +693,7 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
 
 
