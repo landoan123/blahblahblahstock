@@ -183,7 +183,11 @@ def forecast_series(
     alpha_fixed: float = 0.1,
     trend_type: str = "add",
     seasonal_type: str = "add",
+    hw_alpha: float = 0.1,
+    hw_beta: float = 0.2,
+    hw_gamma: float = 0.2,
 ) -> pd.Series:
+
     y = y.dropna().astype(float)
 
     if len(y) < 10:
@@ -227,17 +231,24 @@ def forecast_series(
         sp = seasonal_periods_for(freq)
         sp = min(sp, max(2, len(y) // 2))  # tránh sp quá lớn so với độ dài chuỗi
 
+        # dùng hệ số do user chọn
         model = ExponentialSmoothing(
             y,
             trend=trend_type,
             seasonal=seasonal_type,
             seasonal_periods=sp,
             initialization_method="estimated",
-        ).fit(optimized=True)
+        ).fit(
+            smoothing_level=hw_alpha,        # alpha
+            smoothing_trend=hw_beta,         # beta
+            smoothing_seasonal=hw_gamma,     # gamma
+            optimized=False,
+        )
 
         fc = model.forecast(horizon)
         fc.name = "forecast"
         return fc
+
 
     raise ValueError("Unsupported method")
 
@@ -388,6 +399,9 @@ with st.sidebar:
     alpha_fixed = 0.1
     trend_type = "add"
     seasonal_type = "add"
+    hw_alpha = 0.1
+    hw_beta = 0.2
+    hw_gamma = 0.2
 
     if method == "Simple Exponential Smoothing":
         alpha_mode = st.radio("Chọn alpha", ["Fixed 0.1", "Optimized"], index=0)
@@ -398,7 +412,31 @@ with st.sidebar:
         trend_type = st.selectbox("Trend", ["add", "mul"], index=0)
         seasonal_type = st.selectbox("Seasonal", ["add", "mul"], index=0)
 
+        st.markdown("### Chọn hệ số alpha và beta:")
+        hw_alpha = st.slider(
+            "Alpha (Smoothing Level):",
+            min_value=0.01,
+            max_value=1.0,
+            value=0.10,
+            step=0.01,
+        )
+        hw_beta = st.slider(
+            "Beta (Smoothing Trend):",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.20,
+            step=0.01,
+        )
+        hw_gamma = st.slider(
+            "Gamma (Smoothing Seasonality):",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.20,
+            step=0.01,
+        )
+
     run = st.button("Chạy dự báo")
+
 
 
 # -----------------------------
@@ -471,7 +509,7 @@ if run:
         st.metric("Từ ngày", ts.index.min().strftime("%Y-%m-%d"))
         st.metric("Đến ngày", ts.index.max().strftime("%Y-%m-%d"))
 
-    # forecast
+    # forecas
     try:
         fc = forecast_series(
             y=ts["y"],
@@ -482,7 +520,11 @@ if run:
             alpha_fixed=alpha_fixed,
             trend_type=trend_type,
             seasonal_type=seasonal_type,
+            hw_alpha=hw_alpha,
+            hw_beta=hw_beta,
+            hw_gamma=hw_gamma,
         )
+
     except Exception as e:
         st.error(f"Lỗi khi dự báo: {e}")
         st.stop()
@@ -503,5 +545,6 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
 
