@@ -550,6 +550,9 @@ end_str = end_d.isoformat()
 # -----------------------------
 # Run
 # -----------------------------
+# -----------------------------
+# Run
+# -----------------------------
 if run:
     with st.spinner("Đang tải dữ liệu từ Yahoo Finance..."):
         df = fetch_prices(ticker, start_date_str=start_str, end_date_str=end_str)
@@ -557,41 +560,8 @@ if run:
     if df.empty:
         st.error("Không tải được dữ liệu. Kiểm tra ticker hoặc thử đổi khoảng ngày.")
         st.stop()
-        # ============ PHÂN TÍCH TỔNG QUAN ============
-    st.markdown("Phân tích tổng quan")
 
-    # Thông số đầu vào
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("Mã chứng khoán", ticker)
-    with c2:
-        st.metric("Ngày bắt đầu", start_str)
-    with c3:
-        st.metric("Ngày kết thúc", end_str)
-    with c4:
-        st.metric("Tần suất", freq_label)
-
-    st.caption(f"Analyzing {ticker} from {start_str} to {end_str}")
-
-    # Dữ liệu nguồn (raw từ Yahoo)
-    st.markdown("🧾 Dữ liệu nguồn")
-    st.dataframe(df.head(20), use_container_width=True)
-
-    with st.expander("🔍 Mở rộng dữ liệu nguồn"):
-        st.dataframe(df, use_container_width=True)
-
-    # Thống kê mô tả
-    st.markdown("📈 Phân tích các tham số thống kê")
-    num_cols = [
-        c for c in df.columns
-        if c != "Date" and np.issubdtype(df[c].dtype, np.number)
-    ]
-    if num_cols:
-        stats = df[num_cols].describe().T  # mỗi cột 1 dòng: count, mean, std, min, max,...
-        st.dataframe(stats, use_container_width=True)
-    else:
-        st.info("Không có cột số để thống kê.")
-
+    # --------- Chuẩn bị dữ liệu cốt lõi ---------
     # resolve cột giá (ưu tiên user chọn, fallback Close)
     try:
         price_col = resolve_price_col(df, price_choice, ticker)
@@ -606,17 +576,7 @@ if run:
         st.error(f"Lỗi khi chuẩn hoá tần suất dữ liệu: {e}")
         st.stop()
 
-    st.subheader("Dữ liệu sau khi chuẩn hóa tần suất")
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        st.dataframe(ts.tail(15), use_container_width=True)
-    with c2:
-        # st.metric không nhận datetime.date -> dùng string
-        st.metric("Số quan sát", f"{len(ts)}")
-        st.metric("Từ ngày", ts.index.min().strftime("%Y-%m-%d"))
-        st.metric("Đến ngày", ts.index.max().strftime("%Y-%m-%d"))
-
-    # forecas
+    # forecast cho đoạn tương lai (dùng cho tab Mô hình dự báo)
     try:
         fc = forecast_series(
             y=ts["y"],
@@ -631,11 +591,11 @@ if run:
             hw_beta=hw_beta,
             hw_gamma=hw_gamma,
         )
-
     except Exception as e:
         st.error(f"Lỗi khi dự báo: {e}")
         st.stop()
-        # Tính chỉ số lỗi trên dữ liệu lịch sử (backtest)
+
+    # Tính chỉ số lỗi trên dữ liệu lịch sử (backtest) cho tab Sai số
     metrics = backtest_error_for_model(
         ts=ts,
         method=method,
@@ -647,30 +607,94 @@ if run:
         seasonal_type=seasonal_type,
     )
 
-    if metrics is not None:
-        st.subheader(f"Chỉ số lỗi ({method})")
-        st.markdown(
-            f"- MAE: {metrics['MAE']:.2f}\n"
-            f"- RMSE: {metrics['RMSE']:.2f}\n"
-            f"- MAPE: {metrics['MAPE']:.2f}%"
+    # --------- Tabs giao diện ---------
+    tab_overview, tab_model, tab_error = st.tabs(["Tổng quan", "Mô hình dự báo", "Sai số"])
+
+    # ===== TAB 1: TỔNG QUAN =====
+    with tab_overview:
+        st.markdown("🏠 Trang chủ")
+        st.markdown("📊 Phân tích tổng quan")
+
+        # Thông số đầu vào
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("Mã chứng khoán", ticker)
+        with c2:
+            st.metric("Ngày bắt đầu", start_str)
+        with c3:
+            st.metric("Ngày kết thúc", end_str)
+        with c4:
+            st.metric("Tần suất", freq_label)
+
+        st.caption(f"Analyzing {ticker} từ {start_str} đến {end_str}")
+
+        # Dữ liệu nguồn (raw từ Yahoo)
+        st.markdown(🧾 Dữ liệu nguồn")
+        st.dataframe(df.head(20), use_container_width=True)
+
+        with st.expander("🔍 Xem toàn bộ dữ liệu nguồn"):
+            st.dataframe(df, use_container_width=True)
+
+        # Thống kê mô tả
+        st.markdown("📈 Phân tích các tham số thống kê")
+        num_cols = [
+            c for c in df.columns
+            if c != "Date" and np.issubdtype(df[c].dtype, np.number)
+        ]
+        if num_cols:
+            stats = df[num_cols].describe().T  # count, mean, std, min, max,...
+            st.dataframe(stats, use_container_width=True)
+        else:
+            st.info("Không có cột số để thống kê.")
+
+    # ===== TAB 2: MÔ HÌNH DỰ BÁO =====
+    with tab_model:
+        st.markdown("🔮 Mô hình dự báo")
+
+        st.subheader("Dữ liệu sau khi chuẩn hóa tần suất")
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            st.dataframe(ts.tail(15), use_container_width=True)
+        with c2:
+            st.metric("Số quan sát", f"{len(ts)}")
+            st.metric("Từ ngày", ts.index.min().strftime("%Y-%m-%d"))
+            st.metric("Đến ngày", ts.index.max().strftime("%Y-%m-%d"))
+
+        st.subheader("Biểu đồ dự báo")
+        fc_indexed = plot_actual_forecast(
+            ts,
+            fc,
+            freq,
+            title=f"{ticker} | {freq_label} | {method} | Horizon={horizon} | Range={start_str}→{end_str}",
+            price_label=price_choice,
+            ma_window=ma_window,
         )
 
-    st.subheader("Biểu đồ dự báo")
-    fc_indexed = plot_actual_forecast(
-        ts,
-        fc,
-        freq,
-        title=f"{ticker} | {freq_label} | {method} | Horizon={horizon} | Range={start_str}→{end_str}",
-        price_label=price_choice,   # Adj Close / Close
-        ma_window=ma_window,        # MA20/50/100/200 hoặc None
-    )
+        st.subheader("Bảng dự báo")
+        out = pd.DataFrame({"forecast": fc_indexed})
+        st.dataframe(out, use_container_width=True)
 
-    st.subheader("Bảng dự báo")
-    out = pd.DataFrame({"forecast": fc_indexed})
-    st.dataframe(out, use_container_width=True)
+    # ===== TAB 3: CHỈ SỐ SAI SỐ =====
+    with tab_error:
+        st.markdown("❌ Chỉ số sai số mô hình")
+
+        if metrics is None:
+            st.info(
+                "Không tính được chỉ số lỗi cho cấu hình / dữ liệu hiện tại "
+                "(chuỗi quá ngắn hoặc mô hình không hội tụ)."
+            )
+        else:
+            st.subheader(f"Chỉ số lỗi cho {method}")
+            st.markdown(
+                f"- MAE: {metrics['MAE']:.2f}\n"
+                f"- RMSE: {metrics['RMSE']:.2f}\n"
+                f"- MAPE: {metrics['MAPE']:.2f}%"
+            )
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
+
 
 
 
