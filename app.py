@@ -612,8 +612,7 @@ if run:
 
     # ===== TAB 1: TỔNG QUAN =====
     with tab_overview:
-        st.markdown("🏠 Trang chủ")
-        st.markdown("📊 Phân tích tổng quan")
+        st.markdown("📊 PHÂN TÍCH TỔNG QUAN")
 
         # Thông số đầu vào
         c1, c2, c3, c4 = st.columns(4)
@@ -629,7 +628,7 @@ if run:
         st.caption(f"Analyzing {ticker} từ {start_str} đến {end_str}")
 
         # Dữ liệu nguồn (raw từ Yahoo)
-        st.markdown("🧾 Dữ liệu nguồn")
+        st.markdown("🧾 DỮ LIỆU NGUỒN")
         st.dataframe(df.head(20), use_container_width=True)
 
         with st.expander("🔍 Xem toàn bộ dữ liệu nguồn"):
@@ -649,7 +648,7 @@ if run:
 
     # ===== TAB 2: MÔ HÌNH DỰ BÁO =====
     with tab_model:
-        st.markdown("🔮 Mô hình dự báo")
+        st.markdown("🔮 MÔ HÌNH DỰ BÁO")
 
         st.subheader("Dữ liệu sau khi chuẩn hóa tần suất")
         c1, c2 = st.columns([2, 1])
@@ -676,7 +675,7 @@ if run:
 
     # ===== TAB 3: CHỈ SỐ SAI SỐ =====
     with tab_error:
-        st.markdown("❌ Chỉ số sai số mô hình")
+        st.markdown("❌ SAI SỐ CỦA MÔ HÌNH")
 
         if metrics is None:
             st.info(
@@ -693,6 +692,7 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
 
 
