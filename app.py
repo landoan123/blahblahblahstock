@@ -487,7 +487,7 @@ if run:
         st.error(f"Lỗi khi dự báo: {e}")
         st.stop()
 
-     st.subheader("Biểu đồ dự báo")
+    st.subheader("Biểu đồ dự báo")
     fc_indexed = plot_actual_forecast(
         ts,
         fc,
@@ -503,4 +503,5 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
