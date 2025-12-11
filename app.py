@@ -633,7 +633,7 @@ if run:
 
         with st.expander("🔍 Xem toàn bộ dữ liệu nguồn"):
             st.dataframe(df, use_container_width=True)
-        st.markdown("#### 📉 Biểu đồ giá lịch sử (không dự báo)")
+        st.markdown("#### 📉 Biểu đồ giá lịch sử ")
         # Dùng series đã chuẩn hoá tần suất ts["y"]
         hist = ts["y"].dropna()
         if not hist.empty:
@@ -731,6 +731,7 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
 
 
 
