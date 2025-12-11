@@ -242,25 +242,75 @@ def forecast_series(
     raise ValueError("Unsupported method")
 
 
-def plot_actual_forecast(ts: pd.DataFrame, fc: pd.Series, freq: str, title: str) -> pd.Series:
+def plot_actual_forecast(
+    ts: pd.DataFrame,
+    fc: pd.Series,
+    freq: str,
+    title: str,
+    price_label: str = "Price",
+    ma_window=None,
+) -> pd.Series:
+    """
+    Vẽ:
+    - Giá thực tế (Adj Close / Close) – xanh lá
+    - (Nếu chọn) Đường MA – màu vàng/cam
+    - Đường dự báo – nét đứt
+    """
     y = ts["y"].dropna()
+    if y.empty:
+        return fc
+
+    # map forecast series sang index thời gian tương lai
     last_dt = y.index[-1]
     future_idx = make_future_index(last_dt, freq, len(fc))
     fc = pd.Series(np.asarray(fc.values, dtype=float), index=future_idx, name="forecast")
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=y.index, y=y.values, mode="lines", name="Actual"))
-    fig.add_trace(go.Scatter(x=fc.index, y=fc.values, mode="lines", name="Forecast"))
+
+    # Giá thực tế – xanh lá
+    fig.add_trace(
+        go.Scatter(
+            x=y.index,
+            y=y.values,
+            mode="lines",
+            name=price_label,
+            line=dict(color="lime", width=1.2),
+        )
+    )
+
+    # Đường MA – vàng/cam
+    if ma_window is not None and ma_window > 0 and len(y) >= 2:
+        ma = y.rolling(window=int(ma_window), min_periods=1).mean()
+        fig.add_trace(
+            go.Scatter(
+                x=ma.index,
+                y=ma.values,
+                mode="lines",
+                name=f"MA{int(ma_window)}",
+                line=dict(color="orange", width=2),
+            )
+        )
+
+    # Forecast – nét đứt
+    fig.add_trace(
+        go.Scatter(
+            x=fc.index,
+            y=fc.values,
+            mode="lines",
+            name="Forecast",
+            line=dict(width=2, dash="dash"),
+        )
+    )
+
     fig.update_layout(
         title=title,
         xaxis_title="Date",
-        yaxis_title="Price",
+        yaxis_title=price_label,
         height=520,
         margin=dict(l=20, r=20, t=50, b=20),
     )
     st.plotly_chart(fig, use_container_width=True)
     return fc
-
 
 # -----------------------------
 # UI
@@ -308,6 +358,16 @@ with st.sidebar:
     price_choice = st.selectbox("Cột giá dùng để dự báo", ["Adj Close", "Close"], index=0)
     freq_label = st.selectbox("Tần suất", ["Ngày", "Tuần", "Tháng"], index=0)
     freq = {"Ngày": "D", "Tuần": "W", "Tháng": "M"}[freq_label]
+        # Tuỳ chọn vẽ thêm đường trung bình động (MA) trên biểu đồ
+    ma_option = st.selectbox(
+        "Đường trung bình động (MA) hiển thị",
+        ["Không vẽ MA", "MA20", "MA50", "MA100", "MA200"],
+        index=2,  # mặc định MA50
+    )
+    if ma_option == "Không vẽ MA":
+        ma_window = None
+    else:
+        ma_window = int(ma_option.replace("MA", ""))
 
     method = st.selectbox(
         "Kỹ thuật dự báo",
@@ -427,12 +487,14 @@ if run:
         st.error(f"Lỗi khi dự báo: {e}")
         st.stop()
 
-    st.subheader("Biểu đồ dự báo")
+     st.subheader("Biểu đồ dự báo")
     fc_indexed = plot_actual_forecast(
         ts,
         fc,
         freq,
         title=f"{ticker} | {freq_label} | {method} | Horizon={horizon} | Range={start_str}→{end_str}",
+        price_label=price_choice,   # Adj Close / Close
+        ma_window=ma_window,        # MA20/50/100/200 hoặc None
     )
 
     st.subheader("Bảng dự báo")
@@ -441,3 +503,4 @@ if run:
 
 else:
     st.info("Chọn cấu hình ở sidebar và bấm **Chạy dự báo**.")
+
